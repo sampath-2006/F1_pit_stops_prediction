@@ -1,27 +1,13 @@
 import pandas as pd
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-import joblib
+import numpy as np
 
 
-def preprocess_data(x, is_training=True):
+def preprocess_data(x):
 
     x = x.copy()
 
-    drop_cols = ['id', 'Driver', 'Race']
-
-    existing_drop_cols = [
-        col for col in drop_cols
-        if col in x.columns
-    ]
-
-    x.drop(existing_drop_cols, axis=1, inplace=True)
-
-    categorical_cols = ['Compound']
-
-    numerical_cols = [
-        col for col in x.columns
-        if col not in categorical_cols
-    ]
+    if 'id' in x.columns:
+        x.drop('id', axis=1, inplace=True)
 
     x['TyreWearPerLap'] = (
         x['TyreLife'] / (x['LapNumber'] + 1)
@@ -43,66 +29,29 @@ def preprocess_data(x, is_training=True):
         x['LapTime_Delta'] / (x['TyreLife'] + 1)
     )
 
-    new_feature_cols = [
-        'TyreWearPerLap',
-        'Deg_Tyre',
-        'PositionPressure',
-        'LateRace',
-        'LapTime_Per_TyreLife'
-    ]
+    x['StintProgress'] = (
+        x['LapNumber'] / (x['Stint'] + 1)
+    )
 
-    numerical_cols.extend(new_feature_cols)
+    x['TyreLifeSquared'] = (
+        x['TyreLife'] ** 2
+    )
 
-    if is_training:
+    x['LapNumberSquared'] = (
+        x['LapNumber'] ** 2
+    )
 
-        label_encoders = {}
+    x['DegradationPerLap'] = (
+        x['Cumulative_Degradation'] /
+        (x['LapNumber'] + 1)
+    )
 
-        for col in categorical_cols:
+    x['PositionTimesTyre'] = (
+        x['Position'] * x['TyreLife']
+    )
 
-            le = LabelEncoder()
+    x.replace([np.inf, -np.inf], np.nan, inplace=True)
 
-            x[col] = le.fit_transform(
-                x[col].astype(str)
-            )
-
-            label_encoders[col] = le
-
-        scaler = StandardScaler()
-
-        x[numerical_cols] = scaler.fit_transform(
-            x[numerical_cols]
-        )
-
-        joblib.dump(
-            label_encoders,
-            'label_encoders.pkl'
-        )
-
-        joblib.dump(
-            scaler,
-            'scaler.pkl'
-        )
-
-    else:
-
-        label_encoders = joblib.load(
-            'label_encoders.pkl'
-        )
-
-        scaler = joblib.load(
-            'scaler.pkl'
-        )
-
-        for col in categorical_cols:
-
-            le = label_encoders[col]
-
-            x[col] = le.transform(
-                x[col].astype(str)
-            )
-
-        x[numerical_cols] = scaler.transform(
-            x[numerical_cols]
-        )
+    x.fillna(0, inplace=True)
 
     return x

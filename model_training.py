@@ -1,13 +1,12 @@
 import pandas as pd
-import numpy as np
 import joblib
 
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_auc_score
 
 from catboost import CatBoostClassifier
 
-from data_preprocessing_2 import preprocess_data
+from data_preprocessing import preprocess_data
 
 
 df = pd.read_csv(
@@ -15,13 +14,11 @@ df = pd.read_csv(
 )
 
 x = df.drop('PitNextLap', axis=1)
+
 y = df['PitNextLap']
 
 
-x = preprocess_data(
-    x,
-    is_training=True
-)
+x = preprocess_data(x)
 
 
 x_train, x_test, y_train, y_test = train_test_split(
@@ -33,16 +30,34 @@ x_train, x_test, y_train, y_test = train_test_split(
 )
 
 
+cat_features = [
+    'Driver',
+    'Compound',
+    'Race'
+]
+
+
 model = CatBoostClassifier(
 
-    iterations=3000,
-    learning_rate=0.03,
-    depth=8,
+    iterations=5000,
+
+    learning_rate=0.02,
+
+    depth=10,
+
+    l2_leaf_reg=5,
+
+    bagging_temperature=1,
+
+    random_strength=1,
 
     loss_function='Logloss',
+
     eval_metric='AUC',
 
     random_seed=42,
+
+    early_stopping_rounds=300,
 
     verbose=200
 )
@@ -51,19 +66,23 @@ model = CatBoostClassifier(
 model.fit(
     x_train,
     y_train,
+
+    cat_features=cat_features,
+
     eval_set=(x_test, y_test),
+
     use_best_model=True
 )
 
 
-y_pred = model.predict(x_test)
+y_pred_proba = model.predict_proba(x_test)[:, 1]
 
-accuracy = accuracy_score(
+auc_score = roc_auc_score(
     y_test,
-    y_pred
+    y_pred_proba
 )
 
-print(f"Accuracy : {accuracy:.4f}")
+print(f"AUC Score : {auc_score:.6f}")
 
 
 joblib.dump(
