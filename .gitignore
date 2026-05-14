@@ -4,3 +4,7 @@ submission.csv
 f1_pitstop_ann_model.h5
 venv
 __pycache__/
+catboost_info/
+catboost_model.pkl
+submission2.csv
+label_encoders.pkl

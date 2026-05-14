@@ -4,5 +4,7 @@ numpy
 tensorflow
 streamlit
 joblib
-os-sys
+xgboost
+lightgbm
+catboost
 
