@@ -74,9 +74,9 @@ xgb_pred = (
 
 
 final_pred = (
-    0.5 * cat_pred +
-    0.3 * lgb_pred +
-    0.2 * xgb_pred
+    0.9 * cat_pred +
+    0.1 * lgb_pred 
+    
 )
 
 
@@ -90,7 +90,7 @@ submission = pd.DataFrame({
 
 
 submission.to_csv(
-    'submission_ensemble.csv',
+    'submission_ensemble_cat_0.9_lgb_0.1.csv',
     index=False
 )
 
