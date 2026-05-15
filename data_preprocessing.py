@@ -1,3 +1,6 @@
+# data_preprocessing.py
+
+
 import pandas as pd
 import numpy as np
 
@@ -50,8 +53,48 @@ def preprocess_data(x):
         x['Position'] * x['TyreLife']
     )
 
+    x['Driver_Race'] = (
+        x['Driver'].astype(str)
+        + '_'
+        + x['Race'].astype(str)
+    )
+
+    x['Compound_Stint'] = (
+        x['Compound'].astype(str)
+        + '_'
+        + x['Stint'].astype(str)
+    )
+
+    x['AggressiveTyreUsage'] = (
+        x['TyreLife'] * x['LapTime_Delta']
+    )
+
+    x['RelativeDeg'] = (
+        x['Cumulative_Degradation'] /
+        (x['TyreLife'] + 1)
+    )
+
+    x['RacePhase'] = pd.cut(
+        x['RaceProgress'],
+        bins=[0, 0.3, 0.7, 1],
+        labels=['Early', 'Mid', 'Late']
+    )
+
     x.replace([np.inf, -np.inf], np.nan, inplace=True)
 
-    x.fillna(0, inplace=True)
+    for col in x.columns:
+
+        if str(x[col].dtype) == 'category':
+
+            x[col] = x[col].cat.add_categories(['Unknown'])
+
+            x[col] = x[col].fillna('Unknown')
+
+        else:
+
+            x[col] = x[col].fillna(0)
 
     return x
+
+
+
