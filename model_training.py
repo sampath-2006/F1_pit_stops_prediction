@@ -1,5 +1,5 @@
 # model_training.py
-!pip install catboost
+#pip install catboost
 
 import pandas as pd
 import numpy as np
