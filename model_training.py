@@ -1,3 +1,6 @@
+# model_training.py
+!pip install catboost
+
 import pandas as pd
 import numpy as np
 import joblib
@@ -6,8 +9,6 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score
 
 from catboost import CatBoostClassifier
-from lightgbm import LGBMClassifier
-from xgboost import XGBClassifier
 
 from data_preprocessing import preprocess_data
 
@@ -28,39 +29,54 @@ x = preprocess_data(x)
 
 
 cat_features = [
+
     'Driver',
     'Compound',
     'Race',
+
     'Driver_Race',
     'Compound_Stint',
-    'RacePhase'
+
+    'RacePhase',
+
+    'Driver_Compound',
+    'Race_Compound'
 ]
 
 
 kf = StratifiedKFold(
+
     n_splits=5,
+
     shuffle=True,
+
     random_state=SEED
 )
 
 
-cat_oof = np.zeros(len(x))
-lgb_oof = np.zeros(len(x))
-xgb_oof = np.zeros(len(x))
+oof_preds = np.zeros(len(x))
 
 
 for fold, (train_idx, val_idx) in enumerate(kf.split(x, y)):
 
-    print(f'Fold {fold + 1}')
+    print(f'\nFold {fold + 1}')
+
 
     x_train = x.iloc[train_idx]
+
     x_val = x.iloc[val_idx]
 
+
     y_train = y.iloc[train_idx]
+
     y_val = y.iloc[val_idx]
 
 
-    cat_model = CatBoostClassifier(
+    model = CatBoostClassifier(
+
+        task_type='GPU',
+
+        devices='0',
 
         iterations=3000,
 
@@ -86,8 +102,10 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(x, y)):
     )
 
 
-    cat_model.fit(
+    model.fit(
+
         x_train,
+
         y_train,
 
         cat_features=cat_features,
@@ -98,119 +116,19 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(x, y)):
     )
 
 
-    cat_oof[val_idx] = (
-        cat_model.predict_proba(x_val)[:, 1]
+    val_preds = model.predict_proba(x_val)[:, 1]
+
+    oof_preds[val_idx] = val_preds
+
+
+    joblib.dump(
+        model,
+        f'catboost_fold_{fold}.pkl'
     )
 
 
-    x_train_lgb = x_train.copy()
-    x_val_lgb = x_val.copy()
+auc = roc_auc_score(y, oof_preds)
 
-    for col in cat_features:
-        x_train_lgb[col] = (
-            x_train_lgb[col].astype('category')
-        )
+print(f'\nFinal CV AUC : {auc:.6f}')
 
-        x_val_lgb[col] = (
-            x_val_lgb[col].astype('category')
-        )
-
-
-    lgb_model = LGBMClassifier(
-
-        n_estimators=3000,
-
-        learning_rate=0.03,
-
-        max_depth=8,
-
-        subsample=0.8,
-
-        colsample_bytree=0.8,
-
-        objective='binary',
-
-        random_state=SEED
-    )
-
-
-    lgb_model.fit(
-        x_train_lgb,
-        y_train
-    )
-
-
-    lgb_oof[val_idx] = (
-        lgb_model.predict_proba(x_val_lgb)[:, 1]
-    )
-
-
-    x_train_xgb = x_train.copy()
-    x_val_xgb = x_val.copy()
-
-
-    for col in cat_features:
-
-        x_train_xgb[col] = (
-            x_train_xgb[col]
-            .astype('category')
-            .cat.codes
-        )
-
-        x_val_xgb[col] = (
-            x_val_xgb[col]
-            .astype('category')
-            .cat.codes
-        )
-
-
-    xgb_model = XGBClassifier(
-
-        n_estimators=3000,
-
-        learning_rate=0.03,
-
-        max_depth=8,
-
-        subsample=0.8,
-
-        colsample_bytree=0.8,
-
-        eval_metric='auc',
-
-        random_state=SEED
-    )
-
-
-    xgb_model.fit(
-        x_train_xgb,
-        y_train
-    )
-
-
-    xgb_oof[val_idx] = (
-        xgb_model.predict_proba(x_val_xgb)[:, 1]
-    )
-
-
-final_oof = (
-    0.5 * cat_oof +
-    0.3 * lgb_oof +
-    0.2 * xgb_oof
-)
-
-
-auc_score = roc_auc_score(
-    y,
-    final_oof
-)
-
-
-print(f'Final CV AUC : {auc_score:.6f}')
-
-
-joblib.dump(cat_model, 'catboost_model.pkl')
-joblib.dump(lgb_model, 'lightgbm_model.pkl')
-joblib.dump(xgb_model, 'xgboost_model.pkl')
-
-print('Models Saved Successfully')
+print('\nAll Fold Models Saved Successfully')

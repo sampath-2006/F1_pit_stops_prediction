@@ -15,3 +15,5 @@ xgboost_model_2.pkl
 submission_ensemble_2.csv
 submission_ensemble.csv
 submission_ensemble_cat_0.9_lgb_0.1.csv
+catboost_fold_0.pkl
+submission_fold_avg.csv
